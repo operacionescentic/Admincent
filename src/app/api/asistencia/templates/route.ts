@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { PDFDocument } from "pdf-lib";
+import { PDFDocument, PDFTextField } from "pdf-lib";
 import { auth } from "@/lib/auth/config";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getPdfPageSizes } from "@/lib/cert";
@@ -29,7 +29,7 @@ async function detectAcroformTextFields(bytes: Uint8Array): Promise<string[]> {
     const form = pdf.getForm();
     return form
       .getFields()
-      .filter((f) => f.constructor.name === "PDFTextField")
+      .filter((f) => f instanceof PDFTextField)
       .map((f) => f.getName());
   } catch {
     return [];
