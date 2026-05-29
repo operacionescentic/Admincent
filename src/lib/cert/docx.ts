@@ -104,6 +104,38 @@ export function fillDocx(templateBytes: Uint8Array, values: DocxValues): Uint8Ar
   return doc.getZip().generate({ type: "nodebuffer" });
 }
 
+import { formatTemplateError, type TemplateErrorResult } from "./errors";
+
+export type DocxValidationResult = { ok: true } | ({ ok: false } & TemplateErrorResult);
+
+export function validateDocxTemplate(templateBytes: Uint8Array): DocxValidationResult {
+  let zip: PizZip;
+  try {
+    zip = new PizZip(Buffer.from(templateBytes));
+  } catch {
+    return {
+      ok: false,
+      error: "Archivo DOCX corrupto o ilegible.",
+      status: 400,
+    };
+  }
+  preprocessZip(zip);
+
+  try {
+    const doc = new Docxtemplater(zip, {
+      paragraphLoop: true,
+      linebreaks: true,
+      delimiters: { start: "{{", end: "}}" },
+      nullGetter: () => "",
+      errorLogging: false,
+    });
+    doc.render({});
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, ...formatTemplateError(err, "docx") };
+  }
+}
+
 export function extractDocxKeys(bytes: Uint8Array): string[] {
   const zip = new PizZip(Buffer.from(bytes));
   const keys = new Set<string>();

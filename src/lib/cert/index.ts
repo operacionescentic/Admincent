@@ -1,6 +1,7 @@
 export * from "./pdf";
 export * from "./docx";
 export * from "./render";
+export * from "./errors";
 
 export type TemplateKind = "pdf" | "docx";
 

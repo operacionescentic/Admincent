@@ -2,7 +2,13 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth/config";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { detectKind, extractDocxKeys, getPdfPageSizes, pdfHasAcroForm } from "@/lib/cert";
+import {
+  detectKind,
+  extractDocxKeys,
+  getPdfPageSizes,
+  pdfHasAcroForm,
+  validateDocxTemplate,
+} from "@/lib/cert";
 
 export async function GET(req: Request) {
   const session = await auth();
@@ -56,9 +62,20 @@ export async function POST(req: Request) {
   const kind = detectKind(file.name);
   if (!kind) return NextResponse.json({ error: "unsupported file type" }, { status: 400 });
 
+  const bytes = new Uint8Array(await file.arrayBuffer());
+
+  if (kind === "docx") {
+    const validation = validateDocxTemplate(bytes);
+    if (!validation.ok) {
+      return NextResponse.json(
+        { error: validation.error, issues: validation.issues },
+        { status: validation.status },
+      );
+    }
+  }
+
   const sb = getSupabaseAdmin();
   const path = `${session.user.id}/${crypto.randomUUID()}-${file.name}`;
-  const bytes = new Uint8Array(await file.arrayBuffer());
   const up = await sb.storage.from("templates").upload(path, bytes, {
     contentType: file.type,
     upsert: false,

@@ -35,7 +35,12 @@ export async function GET(
   }
 
   const dl = await sb.storage.from("templates").download(tpl.data.storage_path);
-  if (dl.error || !dl.data) return NextResponse.json({ error: "template download failed" }, { status: 500 });
+  if (dl.error || !dl.data) {
+    return NextResponse.json(
+      { error: "Revisa la plantilla: no se pudo descargar desde almacenamiento." },
+      { status: 500 },
+    );
+  }
   const templateBytes = new Uint8Array(await dl.data.arrayBuffer());
 
   const rendered = await renderCertificate(

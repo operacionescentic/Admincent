@@ -9,6 +9,7 @@ import {
   type AsistenciaFieldDef,
   type LogoPosition,
 } from "@/lib/asistencia/render";
+import { formatTemplateError } from "@/lib/cert";
 
 const participanteSchema = z.object({
   nombre: z.string().min(1),
@@ -81,33 +82,41 @@ export async function POST(req: Request) {
   }
 
   const renders: { nombre: string; cedula: string; pdf: Uint8Array }[] = [];
-  for (const p of data.participantes) {
-    const pdf = await renderAsistenciaPdf({
-      templateBytes,
-      fields,
-      values: {
-        nombre: p.nombre,
-        cedula: p.cedula,
-        curso: data.curso,
-        instructor: data.instructor,
-        horas: data.horas,
-        dia: data.dia,
-        dia_inicio: data.dia_inicio,
-        dia_fin: data.dia_fin,
-        mes: data.mes,
-        anio: data.anio,
-        dia_expedicion: data.dia_expedicion,
-        mes_expedicion: data.mes_expedicion,
-        anio_expedicion: data.anio_expedicion,
-        adicional: data.adicional,
-      },
-      logoPosition,
-      logoBytes,
-      logoMime,
-      acroformMap,
-      useAcroform,
-    });
-    renders.push({ nombre: p.nombre, cedula: p.cedula ?? "", pdf });
+  try {
+    for (const p of data.participantes) {
+      const pdf = await renderAsistenciaPdf({
+        templateBytes,
+        fields,
+        values: {
+          nombre: p.nombre,
+          cedula: p.cedula,
+          curso: data.curso,
+          instructor: data.instructor,
+          horas: data.horas,
+          dia: data.dia,
+          dia_inicio: data.dia_inicio,
+          dia_fin: data.dia_fin,
+          mes: data.mes,
+          anio: data.anio,
+          dia_expedicion: data.dia_expedicion,
+          mes_expedicion: data.mes_expedicion,
+          anio_expedicion: data.anio_expedicion,
+          adicional: data.adicional,
+        },
+        logoPosition,
+        logoBytes,
+        logoMime,
+        acroformMap,
+        useAcroform,
+      });
+      renders.push({ nombre: p.nombre, cedula: p.cedula ?? "", pdf });
+    }
+  } catch (err) {
+    const formatted = formatTemplateError(err, "pdf");
+    return NextResponse.json(
+      { error: formatted.error, issues: formatted.issues },
+      { status: formatted.status },
+    );
   }
 
   if (renders.length === 1) {

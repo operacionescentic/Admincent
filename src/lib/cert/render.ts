@@ -5,6 +5,7 @@ import {
   fillPdfForm,
   type PdfFieldDef,
 } from "./index";
+import { formatTemplateError } from "./errors";
 
 export type CertificateTemplate = {
   kind: "pdf" | "docx";
@@ -18,7 +19,7 @@ export type RenderedCertificate = {
   ext: "pdf" | "docx";
 };
 
-export type RenderError = { error: string; status: number };
+export type RenderError = { error: string; status: number; issues?: unknown };
 
 export async function renderCertificate(
   templateBytes: Uint8Array,
@@ -30,23 +31,32 @@ export async function renderCertificate(
     for (const [k, v] of Object.entries(values)) stringValues[k] = String(v);
 
     const fields = (template.fields ?? []) as PdfFieldDef[];
-    let bytes: Uint8Array;
-    if (fields.length > 0) {
-      bytes = await fillPdfByPlacements(templateBytes, fields, stringValues);
-    } else if (template.has_acroform) {
-      bytes = await fillPdfForm(templateBytes, stringValues);
-    } else {
-      return { error: "PDF template has no field placements or AcroForm.", status: 400 };
+    if (fields.length === 0 && !template.has_acroform) {
+      return {
+        error: "Revisa la plantilla: el PDF no tiene campos colocados ni formulario AcroForm.",
+        status: 400,
+      };
     }
-    return { bytes, mime: "application/pdf", ext: "pdf" };
+    try {
+      const bytes =
+        fields.length > 0
+          ? await fillPdfByPlacements(templateBytes, fields, stringValues)
+          : await fillPdfForm(templateBytes, stringValues);
+      return { bytes, mime: "application/pdf", ext: "pdf" };
+    } catch (err) {
+      return formatTemplateError(err, "pdf");
+    }
   }
 
-  const pdfBytes = await fillDocxAsPdf(templateBytes, values);
-  if (pdfBytes) return { bytes: pdfBytes, mime: "application/pdf", ext: "pdf" };
-
-  return {
-    bytes: fillDocx(templateBytes, values),
-    mime: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    ext: "docx",
-  };
+  try {
+    const pdfBytes = await fillDocxAsPdf(templateBytes, values);
+    if (pdfBytes) return { bytes: pdfBytes, mime: "application/pdf", ext: "pdf" };
+    return {
+      bytes: fillDocx(templateBytes, values),
+      mime: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      ext: "docx",
+    };
+  } catch (err) {
+    return formatTemplateError(err, "docx");
+  }
 }
