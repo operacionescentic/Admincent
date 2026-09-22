@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import {
   Award,
+  BookMarked,
   ChevronDown,
   ChevronRight,
   FileSignature,
@@ -16,7 +17,10 @@ import {
   Mail,
   Menu,
   PanelLeftClose,
+  TableProperties,
+  Upload,
   Users,
+  Wallet,
 } from "lucide-react";
 import { signOut } from "next-auth/react";
 
@@ -39,6 +43,16 @@ const NAV: NavItem[] = [
       { label: "Proveedores", href: "/colaboradores/proveedores", icon: Files },
     ],
   },
+  {
+    label: "Cartera",
+    icon: Wallet,
+    children: [
+      { label: "Dashboard", href: "/cartera", icon: LayoutDashboard },
+      { label: "Registros", href: "/cartera/registros", icon: TableProperties },
+      { label: "Catálogos", href: "/cartera/catalogos", icon: BookMarked },
+      { label: "Importar", href: "/cartera/importar", icon: Upload },
+    ],
+  },
   { label: "Historial", href: "/historial", icon: History },
   { label: "Plantillas", href: "/templates", icon: FileText },
   { label: "Certificados", href: "/certificates", icon: FileSignature },
@@ -54,7 +68,9 @@ const NAV: NavItem[] = [
 
 function isActive(pathname: string, href?: string) {
   if (!href) return false;
-  if (href === "/dashboard") return pathname === "/dashboard";
+  // Rutas que además son prefijo de sus hijas: sólo coinciden exactamente, para
+  // que el hijo "Dashboard" no quede activo al estar en una subpágina.
+  if (href === "/dashboard" || href === "/cartera") return pathname === href;
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 

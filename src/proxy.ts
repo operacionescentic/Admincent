@@ -9,6 +9,7 @@ const PROTECTED = [
   "/templates",
   "/certificates",
   "/asistencia",
+  "/cartera",
 ];
 
 export default auth((req) => {
