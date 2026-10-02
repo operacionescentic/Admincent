@@ -180,6 +180,7 @@ export default function VentaModal({
       onClose={onClose}
       title={venta ? "Editar registro" : "Nuevo registro de cartera"}
       size="lg"
+      zIndex={60}
     >
       <form onSubmit={guardar} className="space-y-4">
         {catalogoVacio && (

@@ -1,7 +1,17 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useCallback, useEffect } from "react";
 import Link from "next/link";
-import { Crown, Download, ListFilter, TableProperties, X } from "lucide-react";
+import {
+  ArrowRight,
+  Bell,
+  CalendarDays,
+  Crown,
+  Download,
+  ListFilter,
+  Phone,
+  TableProperties,
+  X,
+} from "lucide-react";
 import { formatCOP } from "@/lib/nomina/payment";
 import {
   COLOR_ESTADO,
@@ -19,14 +29,52 @@ import {
 import type { VentaEnriquecida } from "@/lib/cartera/types";
 import { BarList, Donut, ProgressBar } from "@/components/cartera/Charts";
 import { Card, EmptyState, EstadoBadge, StatCard } from "@/components/cartera/ui";
+import TareasSemanaModal from "@/components/cartera/TareasSemanaModal";
+import NotificacionCobrosHoy from "@/components/cartera/NotificacionCobrosHoy";
+import {
+  construirSemanaInfo,
+  fechaHoyBogota,
+  obtenerTareasCobro,
+} from "@/lib/cartera/tareas";
 
 const pct = (n: number) => `${Math.round(n * 100)}%`;
 
 export default function CarteraDashboard({ ventas }: { ventas: VentaEnriquecida[] }) {
+  const [ventasOverride, setVentasOverride] = useState<VentaEnriquecida[] | null>(null);
+  const ventasState = ventasOverride ?? ventas;
   const [filtros, setFiltros] = useState<Filtros>({});
+  const [tareasModalOpen, setTareasModalOpen] = useState(false);
+  const [tareasInitialTab, setTareasInitialTab] = useState<"semana" | "hoy" | "vencidas">("semana");
 
-  const opciones = useMemo(() => opcionesFiltro(ventas), [ventas]);
-  const filtradas = useMemo(() => aplicarFiltros(ventas, filtros), [ventas, filtros]);
+  const refrescar = useCallback(() => {
+    fetch("/api/cartera/ventas")
+      .then((r) => r.json())
+      .then((d) => {
+        if (Array.isArray(d)) setVentasOverride(d);
+      })
+      .catch(() => {});
+  }, []);
+
+  const hoyIso = fechaHoyBogota();
+  const todasLasTareas = useMemo(
+    () => obtenerTareasCobro(ventasState, hoyIso),
+    [ventasState, hoyIso],
+  );
+  const tareasHoy = useMemo(
+    () => todasLasTareas.filter((t) => t.esHoy),
+    [todasLasTareas],
+  );
+  const tareasVencidas = useMemo(
+    () => todasLasTareas.filter((t) => t.esVencida),
+    [todasLasTareas],
+  );
+  const semanaInfo = useMemo(
+    () => construirSemanaInfo(todasLasTareas, hoyIso, 0),
+    [todasLasTareas, hoyIso],
+  );
+
+  const opciones = useMemo(() => opcionesFiltro(ventasState), [ventasState]);
+  const filtradas = useMemo(() => aplicarFiltros(ventasState, filtros), [ventasState, filtros]);
 
   const kpis = useMemo(() => calcularKpis(filtradas), [filtradas]);
   const estados = useMemo(() => porEstado(filtradas), [filtradas]);
@@ -62,7 +110,40 @@ export default function CarteraDashboard({ ventas }: { ventas: VentaEnriquecida[
             Control de cartera por cobrar · Cursos y certificaciones
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Botón interactivo de Tareas de la semana con badge dinámico */}
+          <button
+            type="button"
+            onClick={() => {
+              setTareasInitialTab(tareasHoy.length > 0 ? "hoy" : "semana");
+              setTareasModalOpen(true);
+            }}
+            className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition ${
+              tareasHoy.length > 0
+                ? "bg-amber-500 text-black hover:bg-amber-400 font-semibold shadow-lg shadow-amber-500/20"
+                : "border border-[var(--color-border)] bg-[var(--color-surface-2)] text-white hover:border-neutral-500"
+            }`}
+          >
+            {tareasHoy.length > 0 ? (
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-600 opacity-75"></span>
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-red-600"></span>
+              </span>
+            ) : (
+              <CalendarDays className="h-4 w-4 text-[var(--color-accent)]" />
+            )}
+            <span>Tareas de la semana</span>
+            {tareasHoy.length > 0 ? (
+              <span className="rounded-full bg-black/20 px-2 py-0.5 text-xs font-extrabold text-black">
+                {tareasHoy.length} hoy
+              </span>
+            ) : semanaInfo.todasLasTareas.length > 0 ? (
+              <span className="rounded-full bg-[var(--color-surface)] px-2 py-0.5 text-xs text-neutral-300">
+                {semanaInfo.todasLasTareas.length} esta sem.
+              </span>
+            ) : null}
+          </button>
+
           <a
             href={exportUrl}
             className="inline-flex items-center gap-2 rounded-xl border border-[var(--color-border)] px-4 py-2 text-sm font-medium transition hover:bg-[var(--color-surface-2)]"
@@ -77,6 +158,15 @@ export default function CarteraDashboard({ ventas }: { ventas: VentaEnriquecida[
           </Link>
         </div>
       </header>
+
+      {/* Banner / Notificación interactiva de cobros de hoy */}
+      <NotificacionCobrosHoy
+        ventas={ventasState}
+        onOpenTareas={(tab = "hoy") => {
+          setTareasInitialTab(tab);
+          setTareasModalOpen(true);
+        }}
+      />
 
       {/* Filtros */}
       <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
@@ -193,25 +283,78 @@ export default function CarteraDashboard({ ventas }: { ventas: VentaEnriquecida[
         </div>
       )}
 
-      {/* Próximas acciones vencidas */}
-      {vencidas.length > 0 && (
+      {/* Próximas acciones vencidas / Agenda rápida */}
+      {(tareasHoy.length > 0 || vencidas.length > 0 || semanaInfo.todasLasTareas.length > 0) && (
         <Card
-          title={`${vencidas.length} ${vencidas.length === 1 ? "gestión vencida" : "gestiones vencidas"}`}
-          subtitle="Registros con saldo cuya próxima acción de cobro ya llegó o pasó"
+          title={
+            tareasHoy.length > 0
+              ? `${tareasHoy.length} ${tareasHoy.length === 1 ? "cobro para hoy" : "cobros para hoy"}`
+              : `${semanaInfo.todasLasTareas.length} cobros en la agenda semanal`
+          }
+          subtitle="Cobros programados con fecha acordada para hoy o próximas acciones"
         >
-          <ul className="divide-y divide-[var(--color-border)] text-sm">
-            {vencidas.slice(0, 8).map((v) => (
-              <li key={v.id} className="flex flex-wrap items-center justify-between gap-2 py-2.5">
-                <span className="truncate font-medium">{v.cliente}</span>
-                <span className="flex items-center gap-3 text-xs text-[var(--color-muted)]">
-                  <span>Acordado para {v.ultimaGestion?.proxima_accion}</span>
-                  <span className="tabular-nums text-[var(--color-foreground)]">
-                    {formatCOP(v.saldo)}
-                  </span>
-                </span>
-              </li>
-            ))}
-          </ul>
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--color-border)] pb-2 text-xs">
+              <span className="text-[var(--color-muted)]">
+                {tareasHoy.length > 0
+                  ? `Hoy vence la fecha para realizar ${tareasHoy.length} cobro(s)`
+                  : `Total en la semana: ${semanaInfo.todasLasTareas.length} cobros programados`}
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setTareasInitialTab(tareasHoy.length > 0 ? "hoy" : "semana");
+                  setTareasModalOpen(true);
+                }}
+                className="inline-flex items-center gap-1 font-medium text-[var(--color-accent)] hover:underline"
+              >
+                <span>Ver agenda de la semana completa</span>
+                <ArrowRight className="h-3 w-3" />
+              </button>
+            </div>
+
+            <ul className="divide-y divide-[var(--color-border)] text-sm">
+              {(tareasHoy.length > 0 ? tareasHoy : todasLasTareas.slice(0, 5)).map((t) => (
+                <li key={t.id} className="flex flex-wrap items-center justify-between gap-2 py-2.5">
+                  <div className="min-w-0">
+                    <p className="truncate font-medium text-white">{t.venta.cliente}</p>
+                    <p className="text-xs text-[var(--color-muted)]">
+                      {t.venta.servicio ?? "Curso"} · {t.venta.vendedorNorm}
+                      {t.detalle ? ` · ${t.detalle}` : ""}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs font-semibold text-neutral-400">
+                      {t.esHoy ? (
+                        <span className="rounded bg-amber-500/20 px-1.5 py-0.5 text-amber-300">
+                          Hoy
+                        </span>
+                      ) : t.esVencida ? (
+                        <span className="rounded bg-red-500/20 px-1.5 py-0.5 text-red-300">
+                          Vencida ({t.fecha})
+                        </span>
+                      ) : (
+                        <span>{t.fecha}</span>
+                      )}
+                    </span>
+                    <span className="tabular-nums font-bold text-emerald-400">
+                      {formatCOP(t.venta.saldo)}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setTareasInitialTab(t.esHoy ? "hoy" : t.esVencida ? "vencidas" : "semana");
+                        setTareasModalOpen(true);
+                      }}
+                      className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-2)] px-2.5 py-1 text-xs text-neutral-300 hover:text-white"
+                    >
+                      Gestionar
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
         </Card>
       )}
 
@@ -330,6 +473,15 @@ export default function CarteraDashboard({ ventas }: { ventas: VentaEnriquecida[
           </li>
         </ul>
       </Card>
+
+      {tareasModalOpen && (
+        <TareasSemanaModal
+          ventas={ventasState}
+          initialTab={tareasInitialTab}
+          onClose={() => setTareasModalOpen(false)}
+          onChanged={refrescar}
+        />
+      )}
     </div>
   );
 }

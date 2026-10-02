@@ -4,6 +4,7 @@ import Link from "next/link";
 import { toast } from "react-hot-toast";
 import {
   ArrowLeft,
+  CalendarDays,
   CirclePlus,
   Download,
   History,
@@ -18,6 +19,13 @@ import { EstadoBadge } from "@/components/cartera/ui";
 import VentaModal from "@/components/cartera/VentaModal";
 import AbonosModal from "@/components/cartera/AbonosModal";
 import GestionesModal from "@/components/cartera/GestionesModal";
+import TareasSemanaModal from "@/components/cartera/TareasSemanaModal";
+import NotificacionCobrosHoy from "@/components/cartera/NotificacionCobrosHoy";
+import {
+  construirSemanaInfo,
+  fechaHoyBogota,
+  obtenerTareasCobro,
+} from "@/lib/cartera/tareas";
 
 const PAGE_SIZE = 15;
 
@@ -34,6 +42,14 @@ export default function RegistrosClient() {
   const [creando, setCreando] = useState(false);
   const [abonosDe, setAbonosDe] = useState<VentaEnriquecida | null>(null);
   const [gestionesDe, setGestionesDe] = useState<VentaEnriquecida | null>(null);
+
+  const [tareasModalOpen, setTareasModalOpen] = useState(false);
+  const [tareasInitialTab, setTareasInitialTab] = useState<"semana" | "hoy" | "vencidas">("semana");
+
+  const hoyIso = fechaHoyBogota();
+  const todasLasTareas = useMemo(() => obtenerTareasCobro(ventas, hoyIso), [ventas, hoyIso]);
+  const tareasHoy = useMemo(() => todasLasTareas.filter((t) => t.esHoy), [todasLasTareas]);
+  const semanaInfo = useMemo(() => construirSemanaInfo(todasLasTareas, hoyIso, 0), [todasLasTareas, hoyIso]);
 
   const cargar = useCallback(() => {
     fetch("/api/cartera/ventas")
@@ -109,7 +125,40 @@ export default function RegistrosClient() {
             {filtradas.length} de {ventas.length} registros · saldo {formatCOP(totales.saldo)}
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Botón interactivo de Tareas de la semana con badge dinámico */}
+          <button
+            type="button"
+            onClick={() => {
+              setTareasInitialTab(tareasHoy.length > 0 ? "hoy" : "semana");
+              setTareasModalOpen(true);
+            }}
+            className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition ${
+              tareasHoy.length > 0
+                ? "bg-amber-500 text-black hover:bg-amber-400 font-semibold shadow-lg shadow-amber-500/20"
+                : "border border-[var(--color-border)] bg-[var(--color-surface-2)] text-white hover:border-neutral-500"
+            }`}
+          >
+            {tareasHoy.length > 0 ? (
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-600 opacity-75"></span>
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-red-600"></span>
+              </span>
+            ) : (
+              <CalendarDays className="h-4 w-4 text-[var(--color-accent)]" />
+            )}
+            <span>Tareas de la semana</span>
+            {tareasHoy.length > 0 ? (
+              <span className="rounded-full bg-black/20 px-2 py-0.5 text-xs font-extrabold text-black">
+                {tareasHoy.length} hoy
+              </span>
+            ) : semanaInfo.todasLasTareas.length > 0 ? (
+              <span className="rounded-full bg-[var(--color-surface)] px-2 py-0.5 text-xs text-neutral-300">
+                {semanaInfo.todasLasTareas.length} esta sem.
+              </span>
+            ) : null}
+          </button>
+
           <Link
             href="/cartera/importar"
             className="inline-flex items-center gap-2 rounded-xl border border-[var(--color-border)] px-4 py-2 text-sm font-medium transition hover:bg-[var(--color-surface-2)]"
@@ -131,6 +180,15 @@ export default function RegistrosClient() {
           </button>
         </div>
       </header>
+
+      {/* Banner / Notificación interactiva de cobros de hoy */}
+      <NotificacionCobrosHoy
+        ventas={ventas}
+        onOpenTareas={(tab = "hoy") => {
+          setTareasInitialTab(tab);
+          setTareasModalOpen(true);
+        }}
+      />
 
       {/* Filtros */}
       <div className="flex flex-wrap items-end gap-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
@@ -330,6 +388,14 @@ export default function RegistrosClient() {
           key={gestionesDe.id}
           venta={gestionesDe}
           onClose={() => setGestionesDe(null)}
+          onChanged={cargar}
+        />
+      )}
+      {tareasModalOpen && (
+        <TareasSemanaModal
+          ventas={ventas}
+          initialTab={tareasInitialTab}
+          onClose={() => setTareasModalOpen(false)}
           onChanged={cargar}
         />
       )}

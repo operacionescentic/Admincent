@@ -104,7 +104,7 @@ export default function GestionesModal({
   }
 
   return (
-    <Modal open onClose={onClose} title={`Bitácora de gestión · ${venta.cliente}`} size="lg">
+    <Modal open onClose={onClose} title={`Bitácora de gestión · ${venta.cliente}`} size="lg" zIndex={60}>
       <form onSubmit={registrar} className="mb-5 space-y-3">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
           <label className="flex flex-col gap-1">

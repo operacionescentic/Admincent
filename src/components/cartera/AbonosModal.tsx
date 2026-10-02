@@ -93,7 +93,7 @@ export default function AbonosModal({
   }
 
   return (
-    <Modal open onClose={onClose} title={`Abonos · ${venta.cliente}`} size="lg">
+    <Modal open onClose={onClose} title={`Abonos · ${venta.cliente}`} size="lg" zIndex={60}>
       <div className="mb-5 grid grid-cols-3 gap-3 text-center">
         <Resumen label="Total" valor={formatCOP(venta.totalPagar)} />
         <Resumen label="Abonado" valor={formatCOP(abonado)} color="#22c55e" />

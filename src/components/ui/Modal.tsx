@@ -8,12 +8,14 @@ export function Modal({
   title,
   children,
   size = "md",
+  zIndex = 50,
 }: {
   open: boolean;
   onClose: () => void;
   title?: React.ReactNode;
   children: React.ReactNode;
-  size?: "sm" | "md" | "lg";
+  size?: "sm" | "md" | "lg" | "xl" | "2xl";
+  zIndex?: number;
 }) {
   useEffect(() => {
     if (!open) return;
@@ -30,10 +32,19 @@ export function Modal({
 
   if (!open) return null;
 
-  const widths = { sm: "max-w-md", md: "max-w-lg", lg: "max-w-3xl" };
+  const widths = {
+    sm: "max-w-md",
+    md: "max-w-lg",
+    lg: "max-w-3xl",
+    xl: "max-w-5xl",
+    "2xl": "max-w-6xl",
+  };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div
+      className="fixed inset-0 flex items-center justify-center p-4"
+      style={{ zIndex: zIndex ?? 50 }}
+    >
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
       <div
         className={`relative w-full ${widths[size]} max-h-[90vh] overflow-y-auto rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 shadow-2xl`}
