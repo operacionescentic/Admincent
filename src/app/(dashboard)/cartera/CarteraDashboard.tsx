@@ -245,7 +245,7 @@ export default function CarteraDashboard({ ventas }: { ventas: VentaEnriquecida[
         <StatCard
           label='Cartera "al día"'
           value={pct(kpis.pctAlDia)}
-          hint="sobre registros con saldo"
+          hint={`sobre ${filtradas.length} registros`}
         />
         <StatCard
           label="Cartera en gestión / riesgo"

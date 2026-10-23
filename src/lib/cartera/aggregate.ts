@@ -62,8 +62,11 @@ export function calcularKpis(ventas: VentaEnriquecida[]): Kpis {
   const totalFacturado = ventas.reduce((a, v) => a + v.totalPagar, 0);
   const totalRecaudado = ventas.reduce((a, v) => a + v.abonado, 0);
 
-  const alDia = conSaldo.filter((v) => v.estadoCarteraNorm === "Al día").length;
-  const pctAlDia = conSaldo.length === 0 ? 0 : alDia / conSaldo.length;
+  // Sobre todos los registros, no sólo los que tienen saldo: "Al día" casi
+  // siempre significa pagado (saldo 0), así que filtrar por saldo > 0 dejaba el
+  // indicador clavado en 0%.
+  const alDia = ventas.filter((v) => v.estadoCarteraNorm === "Al día").length;
+  const pctAlDia = ventas.length === 0 ? 0 : alDia / ventas.length;
 
   const mayorSaldo =
     conSaldo.length === 0
@@ -75,7 +78,7 @@ export function calcularKpis(ventas: VentaEnriquecida[]): Kpis {
     registrosConSaldo: conSaldo.length,
     saldoPromedio: conSaldo.length === 0 ? 0 : carteraTotal / conSaldo.length,
     pctAlDia,
-    pctEnRiesgo: conSaldo.length === 0 ? 0 : 1 - pctAlDia,
+    pctEnRiesgo: ventas.length === 0 ? 0 : 1 - pctAlDia,
     totalFacturado,
     totalRecaudado,
     pctRecaudo: totalFacturado === 0 ? 0 : totalRecaudado / totalFacturado,

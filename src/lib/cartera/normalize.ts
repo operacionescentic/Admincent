@@ -196,13 +196,20 @@ export function enriquecerVenta(
       ? null
       : gestiones.reduce((latest, g) => (g.fecha > latest.fecha ? g : latest));
 
+  const saldo = Math.max(0, totalPagar - abonado);
+
+  // Una venta saldada con abonos está al día aunque el texto de gestión siga
+  // diciendo "COMPROMISO" o "P": las palabras clave no se actualizan solas.
+  const saldada = totalPagar > 0 && saldo === 0;
+
   return {
     ...venta,
     totalPagar,
     abonado,
-    saldo: Math.max(0, totalPagar - abonado),
+    saldo,
     vendedorNorm: normalizarVendedor(venta.vendedor),
-    estadoCarteraNorm: venta.estado_cartera ?? derivarEstadoCartera(venta),
+    estadoCarteraNorm:
+      venta.estado_cartera ?? (saldada ? "Al día" : derivarEstadoCartera(venta)),
     estadoManual: venta.estado_cartera != null,
     categoriaServicio: categoriaServicio(venta.servicio, categorias),
     rangoMora: rangoMora(venta.meses_mora),
