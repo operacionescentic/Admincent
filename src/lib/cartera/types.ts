@@ -142,4 +142,6 @@ export type VentaEnriquecida = CarteraVenta & {
   categoriaServicio: CategoriaServicio;
   rangoMora: RangoMora;
   ultimaGestion: CarteraGestion | null;
+  abonos?: CarteraAbono[];
+  gestiones?: CarteraGestion[];
 };

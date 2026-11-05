@@ -214,6 +214,8 @@ export function enriquecerVenta(
     categoriaServicio: categoriaServicio(venta.servicio, categorias),
     rangoMora: rangoMora(venta.meses_mora),
     ultimaGestion,
+    abonos,
+    gestiones,
   };
 }
 

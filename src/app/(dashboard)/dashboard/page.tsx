@@ -1,7 +1,10 @@
 import Link from "next/link";
 import { auth } from "@/lib/auth/config";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { History, Mail, Users, FileText } from "lucide-react";
+import { History, Mail, Users, FileText, Wallet } from "lucide-react";
+import { cargarCartera } from "@/lib/cartera/db";
+import IndicadorRecaudoSemanal from "@/components/cartera/IndicadorRecaudoSemanal";
+import type { VentaEnriquecida } from "@/lib/cartera/types";
 
 async function getStats() {
   const sb = getSupabaseAdmin();
@@ -44,16 +47,25 @@ const cards = [
     href: "/templates",
     icon: FileText,
   },
+  {
+    title: "Cartera y cobranzas",
+    description: "Control de cartera por cobrar y abonos.",
+    href: "/cartera",
+    icon: Wallet,
+  },
 ];
 
 export default async function DashboardPage() {
   const session = await auth();
-  const stats = await getStats().catch(() => ({
-    trabajadores: 0,
-    instructores: 0,
-    proveedores: 0,
-    historial: 0,
-  }));
+  const [stats, ventas] = await Promise.all([
+    getStats().catch(() => ({
+      trabajadores: 0,
+      instructores: 0,
+      proveedores: 0,
+      historial: 0,
+    })),
+    cargarCartera().catch(() => [] as VentaEnriquecida[]),
+  ]);
 
   return (
     <div className="space-y-8">
@@ -65,6 +77,13 @@ export default async function DashboardPage() {
           Bienvenido a Nominapp. Empieza generando un desprendible o gestionando tu equipo.
         </p>
       </header>
+
+      {/* Indicador de recaudo semanal de Cartera */}
+      {ventas.length > 0 && (
+        <section>
+          <IndicadorRecaudoSemanal ventas={ventas} />
+        </section>
+      )}
 
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label="Empleados" value={stats.trabajadores} />

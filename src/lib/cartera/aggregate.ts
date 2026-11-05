@@ -7,6 +7,7 @@
  */
 import { CATEGORIAS_SERVICIO, ESTADOS_CARTERA, RANGOS_MORA } from "./types";
 import type { EstadoCartera, VentaEnriquecida } from "./types";
+import { obtenerSemana } from "./tareas";
 
 export type Grupo = {
   etiqueta: string;
@@ -20,6 +21,7 @@ export type Filtros = {
   categoria?: string;
   rango?: string;
   busqueda?: string;
+  semanaRecaudo?: string; // Lunes ISO de la semana
 };
 
 export function aplicarFiltros(
@@ -33,6 +35,13 @@ export function aplicarFiltros(
     if (filtros.estado && v.estadoCarteraNorm !== filtros.estado) return false;
     if (filtros.categoria && v.categoriaServicio !== filtros.categoria) return false;
     if (filtros.rango && v.rangoMora !== filtros.rango) return false;
+    if (filtros.semanaRecaudo) {
+      const sem = obtenerSemana(filtros.semanaRecaudo, 0);
+      const tieneAbonoEnSemana = (v.abonos ?? []).some((a) =>
+        sem.diasIso.includes(a.fecha),
+      );
+      if (!tieneAbonoEnSemana) return false;
+    }
     if (q) {
       const heno = [v.cliente, v.vendedorNorm, v.servicio, v.compromiso_pago, v.notas]
         .filter(Boolean)

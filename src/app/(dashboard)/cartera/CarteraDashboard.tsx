@@ -31,9 +31,11 @@ import { BarList, Donut, ProgressBar } from "@/components/cartera/Charts";
 import { Card, EmptyState, EstadoBadge, StatCard } from "@/components/cartera/ui";
 import TareasSemanaModal from "@/components/cartera/TareasSemanaModal";
 import NotificacionCobrosHoy from "@/components/cartera/NotificacionCobrosHoy";
+import IndicadorRecaudoSemanal from "@/components/cartera/IndicadorRecaudoSemanal";
 import {
   construirSemanaInfo,
   fechaHoyBogota,
+  obtenerSemana,
   obtenerTareasCobro,
 } from "@/lib/cartera/tareas";
 
@@ -96,6 +98,7 @@ export default function CarteraDashboard({ ventas }: { ventas: VentaEnriquecida[
     if (filtros.estado) p.set("estado", filtros.estado);
     if (filtros.categoria) p.set("categoria", filtros.categoria);
     if (filtros.rango) p.set("rango", filtros.rango);
+    if (filtros.semanaRecaudo) p.set("semana", filtros.semanaRecaudo);
     if (filtros.busqueda) p.set("q", filtros.busqueda);
     const qs = p.toString();
     return `/api/cartera/export${qs ? `?${qs}` : ""}`;
@@ -221,12 +224,36 @@ export default function CarteraDashboard({ ventas }: { ventas: VentaEnriquecida[
         </div>
 
         {activos.length > 0 && (
-          <p className="mt-3 flex items-center gap-2 text-xs text-[var(--color-muted)]">
-            <ListFilter className="h-3.5 w-3.5" />
-            Mostrando {filtradas.length} de {ventas.length} registros
-          </p>
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-[var(--color-border)]/60 pt-3">
+            <p className="flex items-center gap-2 text-xs text-[var(--color-muted)]">
+              <ListFilter className="h-3.5 w-3.5" />
+              Mostrando {filtradas.length} de {ventas.length} registros
+            </p>
+            {filtros.semanaRecaudo && (
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-xs text-emerald-300">
+                <span>Filtro de recaudo: Semana {obtenerSemana(filtros.semanaRecaudo, 0).label}</span>
+                <button
+                  type="button"
+                  onClick={() => setFiltros((f) => ({ ...f, semanaRecaudo: undefined }))}
+                  className="hover:text-white"
+                  title="Quitar filtro de semana"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </span>
+            )}
+          </div>
         )}
       </div>
+
+      {/* Indicador de Recaudo Semanal con filtro interactivo por semanas */}
+      <IndicadorRecaudoSemanal
+        ventas={ventasState}
+        semanaFiltrada={filtros.semanaRecaudo}
+        onFiltrarSemana={(sem) =>
+          setFiltros((f) => ({ ...f, semanaRecaudo: sem }))
+        }
+      />
 
       {/* KPIs */}
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
